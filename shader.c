@@ -205,6 +205,7 @@ int main(int argc, char** argv)
 	// Destruction
 	// =====================================
 	// Shader
+	glDeleteProgram(program);
 
 	// Vertex Buffers
 	glDeleteVertexArrays(1, &vao);
