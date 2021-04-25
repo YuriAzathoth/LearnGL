@@ -13,25 +13,28 @@ static int validate_gl(const char* title);
 
 static const float vertices[] =
 {
-	-0.5f, -0.5f,  0.0f,
-	 0.5f, -0.5f,  0.0f,
-	 0.5f,  0.5f,  0.0f
+	-0.5f, -0.5f,  0.0f, 0.0f, 0.0f, 1.0f,
+	 0.5f, -0.5f,  0.0f, 0.0f, 1.0f, 0.0f,
+	 0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f
 };
 
 static const char* vertex_shader =
 	"#version 330 core\n"
 	"layout (location = 0) in vec3 aPos;\n"
+	"layout (location = 1) in vec3 aColor;\n"
+	"out vec3 color;\n"
 	"void main()\n"
 	"{\n"
+	"    color = aColor;\n"
 	"    gl_Position = vec4(aPos, 1.0);\n"
 	"}";
 
 static const char* fragment_shader =
 	"#version 330 core\n"
-	"uniform vec3 sColor;\n"
+	"in vec3 color;\n"
 	"void main()\n"
 	"{\n"
-	"    gl_FragColor = vec4(sColor, 1.0);\n"
+	"    gl_FragColor = vec4(color, 1.0);\n"
 	"}";
 
 int main(int argc, char** argv)
@@ -95,8 +98,13 @@ int main(int argc, char** argv)
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), NULL);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
 	if (!validate_gl("VBO Creation Error"))
 	{
 		SDL_GL_DeleteContext(context);
@@ -155,30 +163,6 @@ int main(int argc, char** argv)
 	}
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
-
-	// Shader Uniforms Locations
-
-	const unsigned uniform_color = glGetUniformLocation(program, "sColor");
-	if (!validate_gl("Shader Uniform Setting Error"))
-	{
-		SDL_GL_DeleteContext(context);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
-	}
-
-	// Shader Uniform Settings
-
-	glUseProgram(program);
-	glUniform3f(uniform_color, 0.0f, 0.25f, 1.0f);
-	glUseProgram(0);
-	if (!validate_gl("Shader Uniform Setting Error"))
-	{
-		SDL_GL_DeleteContext(context);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
-	}
 
 	// =====================================
 	// Rendering
