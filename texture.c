@@ -211,6 +211,11 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	// Shader Uniforms
+	glUseProgram(program);
+	glUniform1i(glGetUniformLocation(program, "sTexture"), 0);
+	glUseProgram(0);
+
 	// =====================================
 	// Rendering
 	// =====================================
