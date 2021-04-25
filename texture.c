@@ -38,10 +38,9 @@ static const char* fragment_shader =
 	"#version 330 core\n"
 	"uniform sampler2D sTexture;\n"
 	"in vec2 texCoord;\n"
-	"layout(location = 0) out vec4 FragColor;\n"
 	"void main()\n"
 	"{\n"
-	"    FragColor = texture(sTexture, texCoord);\n"
+	"    gl_FragColor = texture(sTexture, texCoord);\n"
 	"}";
 
 int main(int argc, char** argv)
