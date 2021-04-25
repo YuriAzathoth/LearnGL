@@ -87,6 +87,9 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	// STB Image
+	stbi_set_flip_vertically_on_load(1);
+
 	// Vertex Buffers
 	unsigned vao;
 	glGenVertexArrays(1, &vao);
