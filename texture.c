@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#define STB_IMAGE_IMPLEMENTATION
 #define SDL_MAIN_HANDLED
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
+#include "stb_image.h"
 
 #define ERROR_BUFFER_SIZE 2048
 
@@ -13,28 +15,33 @@ static int validate_gl(const char* title);
 
 static const float vertices[] =
 {
-	-0.5f, -0.5f,  0.0f, 0.0f, 0.0f, 1.0f,
-	 0.5f, -0.5f,  0.0f, 0.0f, 1.0f, 0.0f,
-	 0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f
+	 0.5f,  0.5f, 0.0f,		1.0f, 1.0f,
+	 0.5f, -0.5f, 0.0f,		1.0f, 0.0f,
+	-0.5f, -0.5f, 0.0f,		0.0f, 0.0f,
+	-0.5f,  0.5f, 0.0f,		0.0f, 1.0f
 };
+
+static const unsigned indices[] = { 0, 1, 3, 1, 2, 3 };
 
 static const char* vertex_shader =
 	"#version 330 core\n"
 	"layout (location = 0) in vec3 aPos;\n"
-	"layout (location = 1) in vec3 aColor;\n"
-	"out vec3 color;\n"
+	"layout (location = 1) in vec2 aTexCoord;\n"
+	"out vec2 texCoord;\n"
 	"void main()\n"
 	"{\n"
-	"    color = aColor;\n"
+	"    texCoord = aTexCoord;\n"
 	"    gl_Position = vec4(aPos, 1.0);\n"
 	"}";
 
 static const char* fragment_shader =
 	"#version 330 core\n"
-	"in vec3 color;\n"
+	"uniform sampler2D sTexture;\n"
+	"in vec2 texCoord;\n"
+	"layout(location = 0) out vec4 FragColor;\n"
 	"void main()\n"
 	"{\n"
-	"    gl_FragColor = vec4(color, 1.0);\n"
+	"    FragColor = texture(sTexture, texCoord);\n"
 	"}";
 
 int main(int argc, char** argv)
@@ -71,7 +78,6 @@ int main(int argc, char** argv)
 	}
 
 	// GLEW
-
 	glewExperimental = GL_TRUE;
 	if (glewInit() != GLEW_OK)
 	{
@@ -98,14 +104,23 @@ int main(int argc, char** argv)
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
-
 	if (!validate_gl("VBO Creation Error"))
+	{
+		SDL_GL_DeleteContext(context);
+		SDL_DestroyWindow(window);
+		SDL_Quit();
+		return 1;
+	}
+
+	unsigned ebo;
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	if (!validate_gl("EBO Creation Error"))
 	{
 		SDL_GL_DeleteContext(context);
 		SDL_DestroyWindow(window);
@@ -161,8 +176,41 @@ int main(int argc, char** argv)
 		SDL_Quit();
 		return 1;
 	}
+
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
+
+	// Texture
+	unsigned texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	int width, height, channels;
+	unsigned char* texture_data = stbi_load("data/textures/crate.png", &width, &height, &channels, 0);
+	if (!texture_data)
+	{
+		error("Texture Loading Error", "Could not found file data/textures/crate.png.");
+		SDL_GL_DeleteContext(context);
+		SDL_DestroyWindow(window);
+		SDL_Quit();
+		return 1;
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	stbi_image_free(texture_data);
+	if (!validate_gl("VAO Creation Error"))
+	{
+		SDL_GL_DeleteContext(context);
+		SDL_DestroyWindow(window);
+		SDL_Quit();
+		return 1;
+	}
 
 	// =====================================
 	// Rendering
@@ -176,8 +224,11 @@ int main(int argc, char** argv)
 				run = 0;
 
 		glUseProgram(program);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
 		glBindVertexArray(vao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+		glDrawElements(GL_TRIANGLES, sizeof(vertices) / sizeof(float), GL_UNSIGNED_INT, 0);
 
 		if (validate_gl("Open GL Rendering Error"))
 			SDL_GL_SwapWindow(window);
@@ -188,6 +239,9 @@ int main(int argc, char** argv)
 	// =====================================
 	// Destruction
 	// =====================================
+	// Texture
+	glDeleteTextures(1, &texture);
+
 	// Shader
 	glDeleteProgram(program);
 
