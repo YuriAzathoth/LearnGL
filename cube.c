@@ -272,7 +272,7 @@ int main(int argc, char** argv)
 	// =====================================
 	// Rendering
 	// =====================================
-	// View and Projection Matrix
+	// View and Projection Matrices
 	mat4 view;
 	glm_mat4_identity(view);
 

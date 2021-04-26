@@ -286,15 +286,18 @@ int main(int argc, char** argv)
 	// =====================================
 	// Rendering
 	// =====================================
-	// View and Projection Matrix
+	// View Matrix
 	mat4 view;
-	vec3 view_position = { 0.0f, 0.0f, -3.0f };
 	glm_mat4_identity(view);
+
+	vec3 view_position = { 0.0f, 0.0f, -3.0f };
 	glm_translate(view, view_position);
 
+	// Projection Matrix
 	mat4 proj;
 	glm_perspective(45.0f, 1024.0f / 720.0f, 0.01f, 100.0f, proj);
 
+	// View and Projection Matrix
 	mat4 viewproj;
 	glm_mat4_mul_sse2(proj, view, viewproj);
 
