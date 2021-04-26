@@ -310,8 +310,6 @@ int main(int argc, char** argv)
 
 	// Rotation
 	vec3 rotation_axis = { 0.5f, 1.0f, 0.75f };
-	glm_vec3_norm(rotation_axis);
-
 	versor rotation;
 	glm_quat_identity(rotation);
 
