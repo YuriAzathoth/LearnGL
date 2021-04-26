@@ -167,6 +167,7 @@ int main(int argc, char** argv)
 			if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
 				run = 0;
 
+		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(program);
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, 3);

@@ -230,6 +230,7 @@ int main(int argc, char** argv)
 			if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
 				run = 0;
 
+		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(program);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
