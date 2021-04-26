@@ -275,7 +275,6 @@ int main(int argc, char** argv)
 	// View and Projection Matrix
 	mat4 view;
 	glm_mat4_identity(view);
-	vec3 delta = { 1.0f, 0.0f, -2.0f };
 
 	mat4 proj;
 	glm_perspective(45.0f, 1024.0f / 720.0f, 0.01f, 100.0f, proj);
