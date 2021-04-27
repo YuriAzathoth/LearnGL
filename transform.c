@@ -7,12 +7,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
 #include "cglm/affine.h"
+#include "common.h"
 #include "stb_image.h"
-
-#define ERROR_BUFFER_SIZE 2048
-
-static void error(const char* title, const char* format, ...);
-static int validate_gl(const char* title);
 
 static const float vertices[] =
 {
@@ -281,66 +277,6 @@ int main(int argc, char** argv)
 	SDL_Quit();
 
 	return 0;
-}
-
-static void error(const char* title, const char* format, ...)
-{
-	char message[ERROR_BUFFER_SIZE];
-	va_list arg;
-	va_start(arg, format);
-	vsprintf(message, format, arg);
-	va_end(arg);
-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message, NULL);
-}
-
-static int validate_gl(const char* title)
-{
-	static const char* GL_ERROR_MESSAGES[] =
-	{
-		"An unacceptable value is specified for an enumerated argument.\nThe offending command is ignored and has no other side effect than to set the error flag.",
-		"A numeric argument is out of range. The offending command is ignored\nand has no other side effect than to set the error flag.",
-		"The specified operation is not allowed in the current state.\nThe offending command is ignored and has no other side effect than to set the error flag.",
-		"The framebuffer object is not complete. The offending command is ignored\nand has no other side effect than to set the error flag.",
-		"There is not enough memory left to execute the command. The state of the GL is undefined,\nexcept for the state of the error flags, after this error is recorded.",
-		"An attempt has been made to perform an operation that would cause an internal stack to underflow.",
-		"An attempt has been made to perform an operation that would cause an internal stack to overflow."
-	};
-
-	int index;
-	GLenum status = glGetError();
-	if (status == GL_NO_ERROR)
-		return 1;
-	else
-	{
-		switch (status)
-		{
-		case GL_INVALID_ENUM:
-			index = 0;
-			break;
-		case GL_INVALID_VALUE:
-			index = 1;
-			break;
-		case GL_INVALID_OPERATION:
-			index = 2;
-			break;
-		case GL_INVALID_FRAMEBUFFER_OPERATION:
-			index = 3;
-			break;
-		case GL_OUT_OF_MEMORY:
-			index = 4;
-			break;
-		case GL_STACK_UNDERFLOW:
-			index = 5;
-			break;
-		case GL_STACK_OVERFLOW:
-			index = 6;
-			break;
-		default:
-			return 0;
-		}
-		error(title, GL_ERROR_MESSAGES[index]);
-		return 0;
-	}
 }
 
 __declspec(dllexport) unsigned NvOptimusEnablement = 1;
