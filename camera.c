@@ -172,7 +172,7 @@ int main(int argc, char** argv)
 	// Shader
 	char* vertex_shader = NULL;
 	char* fragment_shader = NULL;
-	if (!load_shaders_text(&vertex_shader, &fragment_shader, "data/shaders/basic3d"))
+	if (!load_shaders_text(&vertex_shader, &fragment_shader, "data/shaders/6_camera"))
 	{
 		SDL_GL_DeleteContext(context);
 		SDL_DestroyWindow(window);
