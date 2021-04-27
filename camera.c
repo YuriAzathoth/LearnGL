@@ -11,18 +11,26 @@
 #include "cglm/quat.h"
 #include "stb_image.h"
 
-#define CAMERA_SENSITIVITY 0.000001f
-#define CAMERA_SPEED 0.000025f
-#define CONTROL_FORWARD 0x01
-#define CONTROL_BACK 0x02
-#define CONTROL_LEFT 0x04
-#define CONTROL_RIGHT 0x08
-#define CONTROL_UP 0x10
-#define CONTROL_DOWN 0x20
+#define CAMERA_SENSITIVITY -0.00125f
+#define CAMERA_SENSITIVITY_MOUSE -0.00025f
+#define CAMERA_SPEED 0.005f
+#define CONTROL_FORWARD 0x0001
+#define CONTROL_BACK 0x0002
+#define CONTROL_LEFT 0x0004
+#define CONTROL_RIGHT 0x0008
+#define CONTROL_UP 0x0010
+#define CONTROL_DOWN 0x0020
+#define CONTROL_PITCH_UP 0x0040
+#define CONTROL_PITCH_DOWN 0x0080
+#define CONTROL_YAW_LEFT 0x0100
+#define CONTROL_YAW_RIGHT 0x0200
+#define CONTROL_ROLL_LEFT 0x0400
+#define CONTROL_ROLL_RIGHT 0x0800
 #define ERROR_BUFFER_SIZE 2048
 
 static void error(const char* title, const char* format, ...);
 static int validate_gl(const char* title);
+static void process_controls(unsigned type, unsigned key, unsigned short* controls);
 
 static const float vertices[] =
 {
@@ -237,8 +245,8 @@ int main(int argc, char** argv)
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -297,14 +305,13 @@ int main(int argc, char** argv)
 	// =====================================
 	// Rendering
 	// =====================================
-	unsigned char controls = 0;
-
 	// Camera
-	vec3 view_position = { 0.0f, 0.0f, -3.0f };
-	versor view_rotation;
-	versor view_rotate;
-	vec3 view_move;
-	glm_quat_identity(view_rotation);
+	vec3 camera_position = { 0.0f, 0.0f, 3.0f };
+	vec3 camera_direction;
+	vec3 camera_up;
+	vec3 camera_move;
+	versor camera_rotation = GLM_QUAT_IDENTITY_INIT;
+	versor camera_rotate;
 
 	// Matrices
 	mat4 model, view, viewproj;
@@ -321,101 +328,112 @@ int main(int argc, char** argv)
 	SDL_Event event;
 	int run = 1;
 	int i;
+	float tick_delta;
 	float tick_curr;
 	float tick_prev = 0.0f;
+	unsigned short controls = 0;
 	while (run)
 	{
+		tick_curr = (float)SDL_GetTicks();
+		tick_delta = tick_curr - tick_prev;
+
+		// Events
 		while (SDL_PollEvent(&event))
+		{
 			switch (event.type)
 			{
 			case SDL_QUIT:
 				run = 0;
 				break;
 			case SDL_KEYDOWN:
-				switch (event.key.keysym.sym)
-				{
-				case SDLK_w:
-					controls |= CONTROL_FORWARD;
-					break;
-				case SDLK_s:
-					controls |= CONTROL_BACK;
-					break;
-				case SDLK_a:
-					controls |= CONTROL_LEFT;
-					break;
-				case SDLK_d:
-					controls |= CONTROL_RIGHT;
-					break;
-				case SDLK_SPACE:
-					controls |= CONTROL_UP;
-					break;
-				case SDLK_LCTRL:
-					controls |= CONTROL_DOWN;
-					break;
-				case SDLK_ESCAPE:
+				if (event.key.keysym.sym == SDLK_ESCAPE)
 					run = 0;
-					break;
-				}
-				break;
-			case SDL_KEYUP:
-				switch (event.key.keysym.sym)
-				{
-				case SDLK_w:
-					controls &= ~CONTROL_FORWARD;
-					break;
-				case SDLK_s:
-					controls &= ~CONTROL_BACK;
-					break;
-				case SDLK_a:
-					controls &= ~CONTROL_LEFT;
-					break;
-				case SDLK_d:
-					controls &= ~CONTROL_RIGHT;
-					break;
-				case SDLK_SPACE:
-					controls &= ~CONTROL_UP;
-					break;
-				case SDLK_LCTRL:
-					controls &= ~CONTROL_DOWN;
-					break;
-				}
 				break;
 			case SDL_MOUSEMOTION:
 				if (event.motion.xrel)
 				{
-					glm_quat(view_rotate, (float)event.motion.xrel * tick_curr * CAMERA_SENSITIVITY, 0.0f, 1.0f, 0.0f);
-					glm_quat_mul_sse2(view_rotate, view_rotation, view_rotation);
+					glm_quat(camera_rotate, (float)event.motion.xrel * tick_delta * CAMERA_SENSITIVITY_MOUSE, 0.0f, 1.0f, 0.0f);
+					glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
 				}
 				if (event.motion.yrel)
 				{
-					glm_quat(view_rotate, (float)event.motion.yrel * tick_curr * CAMERA_SENSITIVITY, 1.0f, 0.0f, 0.0f);
-					glm_quat_mul_sse2(view_rotate, view_rotation, view_rotation);
+					glm_quat(camera_rotate, (float)event.motion.yrel * tick_delta * CAMERA_SENSITIVITY_MOUSE, 1.0f, 0.0f, 0.0f);
+					glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
 				}
 				break;
 			}
+			process_controls(event.type, event.key.keysym.sym, &controls);
+		}
 
-		tick_curr = (float)SDL_GetTicks();
-
-		glm_vec3_zero(view_move);
+		glm_vec3_zero(camera_move);
 		if (controls & CONTROL_FORWARD)
-			view_move[2] += tick_curr * CAMERA_SPEED;
+			camera_move[2] -= 1.0f;
 		if (controls & CONTROL_BACK)
-			view_move[2] -= tick_curr * CAMERA_SPEED;
+			camera_move[2] += 1.0f;
 		if (controls & CONTROL_LEFT)
-			view_move[0] += tick_curr * CAMERA_SPEED;
+			camera_move[0] -= 1.0f;
 		if (controls & CONTROL_RIGHT)
-			view_move[0] -= tick_curr * CAMERA_SPEED;
+			camera_move[0] += 1.0f;
 		if (controls & CONTROL_UP)
-			view_move[1] -= tick_curr * CAMERA_SPEED;
+			camera_move[1] += 1.0f;
 		if (controls & CONTROL_DOWN)
-			view_move[1] += tick_curr * CAMERA_SPEED;
-		glm_quat_rotatev(view_rotation, view_move, view_move);
-		glm_vec3_add(view_position, view_move, view_position);
+			camera_move[1] -= 1.0f;
+		if (controls & CONTROL_PITCH_UP)
+		{
+			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, -1.0f, 0.0f, 0.0f);
+			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
+		}
+		if (controls & CONTROL_PITCH_DOWN)
+		{
+			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 1.0f, 0.0f, 0.0f);
+			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
+		}
+		if (controls & CONTROL_YAW_LEFT)
+		{
+			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, -1.0f, 0.0f);
+			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
+		}
+		if (controls & CONTROL_YAW_RIGHT)
+		{
+			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, 1.0f, 0.0f);
+			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
+		}
+		if (controls & CONTROL_ROLL_LEFT)
+		{
+			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, 0.0f, -1.0f);
+			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
+		}
+		if (controls & CONTROL_ROLL_RIGHT)
+		{
+			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, 0.0f, 1.0f);
+			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
+		}
 
-		glm_translate_make(view, view_position);
-		glm_quat_rotate(view, view_rotation, view);
+		tick_prev = tick_curr;
+
+		// =================================
+		// Camera
+		// =================================
+		// Move
+		if (camera_move[0] || camera_move[1] || camera_move[2])
+		{
+			glm_normalize(camera_move);
+			glm_vec3_scale(camera_move, CAMERA_SPEED * tick_delta, camera_move);
+			glm_quat_rotatev(camera_rotation, camera_move, camera_move);
+			glm_vec3_add(camera_position, camera_move, camera_position);
+		}
+
+		// Look
+		glm_quat_rotatev(camera_rotation, GLM_FORWARD, camera_direction);
+
+		// View Matrix
+		glm_quat_rotatev(camera_rotation, GLM_YUP, camera_up);
+		glm_look(camera_position, camera_direction, camera_up, view);
+
+		// View and Projection Matrix
 		glm_mat4_mul_sse2(proj, view, viewproj);
 
+		// Rendering
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(program);
 		glActiveTexture(GL_TEXTURE0);
@@ -423,16 +441,12 @@ int main(int argc, char** argv)
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 		glUniformMatrix4fv(uniform_viewproj, 1, GL_FALSE, viewproj[0]);
-
-		tick_prev = tick_curr;
-
 		for (i = 0; i < sizeof(positions) / sizeof(vec3); ++i)
 		{
 			glm_mat4_identity(model);
 			glm_translate(model, positions[i]);
 			glm_quatv(rotation, tick_curr * 0.0001f * (i + 1), rotation_axis);
 			glm_quat_rotate(model, rotation, model);
-
 			glUniformMatrix4fv(uniform_model, 1, GL_FALSE, model[0]);
 			glDrawElements(GL_TRIANGLES, sizeof(vertices) / sizeof(float), GL_UNSIGNED_INT, 0);
 		}
@@ -521,6 +535,94 @@ static int validate_gl(const char* title)
 		}
 		error(title, GL_ERROR_MESSAGES[index]);
 		return 0;
+	}
+}
+
+static void process_controls(unsigned type, unsigned key, unsigned short* controls)
+{
+	switch (type)
+	{
+	case SDL_KEYDOWN:
+		switch (key)
+		{
+		case SDLK_w:
+			*controls |= CONTROL_FORWARD;
+			break;
+		case SDLK_s:
+			*controls |= CONTROL_BACK;
+			break;
+		case SDLK_a:
+			*controls |= CONTROL_LEFT;
+			break;
+		case SDLK_d:
+			*controls |= CONTROL_RIGHT;
+			break;
+		case SDLK_SPACE:
+			*controls |= CONTROL_UP;
+			break;
+		case SDLK_LCTRL:
+			*controls |= CONTROL_DOWN;
+			break;
+		case SDLK_UP:
+			*controls |= CONTROL_PITCH_UP;
+			break;
+		case SDLK_DOWN:
+			*controls |= CONTROL_PITCH_DOWN;
+			break;
+		case SDLK_LEFT:
+			*controls |= CONTROL_YAW_LEFT;
+			break;
+		case SDLK_RIGHT:
+			*controls |= CONTROL_YAW_RIGHT;
+			break;
+		case SDLK_q:
+			*controls |= CONTROL_ROLL_LEFT;
+			break;
+		case SDLK_e:
+			*controls |= CONTROL_ROLL_RIGHT;
+			break;
+		}
+		break;
+	case SDL_KEYUP:
+		switch (key)
+		{
+		case SDLK_w:
+			*controls &= ~CONTROL_FORWARD;
+			break;
+		case SDLK_s:
+			*controls &= ~CONTROL_BACK;
+			break;
+		case SDLK_a:
+			*controls &= ~CONTROL_LEFT;
+			break;
+		case SDLK_d:
+			*controls &= ~CONTROL_RIGHT;
+			break;
+		case SDLK_SPACE:
+			*controls &= ~CONTROL_UP;
+			break;
+		case SDLK_LCTRL:
+			*controls &= ~CONTROL_DOWN;
+			break;
+		case SDLK_UP:
+			*controls &= ~CONTROL_PITCH_UP;
+			break;
+		case SDLK_DOWN:
+			*controls &= ~CONTROL_PITCH_DOWN;
+			break;
+		case SDLK_LEFT:
+			*controls &= ~CONTROL_YAW_LEFT;
+			break;
+		case SDLK_RIGHT:
+			*controls &= ~CONTROL_YAW_RIGHT;
+			break;
+		case SDLK_q:
+			*controls &= ~CONTROL_ROLL_LEFT;
+			break;
+		case SDLK_e:
+			*controls &= ~CONTROL_ROLL_RIGHT;
+			break;
+		}
 	}
 }
 
