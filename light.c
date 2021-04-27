@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -28,11 +27,9 @@
 #define CONTROL_ROLL_LEFT 0x0400
 #define CONTROL_ROLL_RIGHT 0x0800
 #define ERROR_BUFFER_SIZE 2048
-#define FILENAME_BUFFER_SIZE 256
 
 static void error(const char* title, const char* format, ...);
 static int validate_gl(const char* title);
-static int load_shaders_text(char** vertex_shader, char** fragment_shader, const char* filename);
 static void process_controls(unsigned type, unsigned key, unsigned short* controls);
 
 static const float vertices[] =
@@ -74,6 +71,28 @@ static vec3 positions[] =
 	{  1.5f,  0.2f, -1.5f },
 	{ -1.3f,  1.0f, -1.5f }
 };
+
+static const char* vertex_shader =
+	"#version 330 core\n"
+	"uniform mat4 cModel;\n"
+	"uniform mat4 cViewProj;\n"
+	"layout (location = 0) in vec3 aPos;\n"
+	"layout (location = 1) in vec2 aTexCoord;\n"
+	"out vec2 texCoord;\n"
+	"void main()\n"
+	"{\n"
+	"    texCoord = aTexCoord;\n"
+	"    gl_Position = cViewProj * cModel * vec4(aPos, 1.0);\n"
+	"}";
+
+static const char* fragment_shader =
+	"#version 330 core\n"
+	"uniform sampler2D sTexture;\n"
+	"in vec2 texCoord;\n"
+	"void main()\n"
+	"{\n"
+	"    gl_FragColor = texture(sTexture, texCoord);\n"
+	"}";
 
 int main(int argc, char** argv)
 {
@@ -170,16 +189,6 @@ int main(int argc, char** argv)
 	}
 
 	// Shader
-	char* vertex_shader = NULL;
-	char* fragment_shader = NULL;
-	if (!load_shaders_text(&vertex_shader, &fragment_shader, "data/shaders/basic3d"))
-	{
-		SDL_GL_DeleteContext(context);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
-	}
-
 	int success;
 
 	const unsigned vertex = glCreateShader(GL_VERTEX_SHADER);
@@ -230,8 +239,6 @@ int main(int argc, char** argv)
 
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
-	free(vertex_shader);
-	free(fragment_shader);
 
 	// Texture
 	unsigned texture;
@@ -529,58 +536,6 @@ static int validate_gl(const char* title)
 		error(title, GL_ERROR_MESSAGES[index]);
 		return 0;
 	}
-}
-
-static int load_shaders_text(char** vertex_shader, char** fragment_shader, const char* filename)
-{
-	char shadername[FILENAME_BUFFER_SIZE];
-
-	sprintf(shadername, "%s.vs.glsl", filename);
-	FILE* file = fopen(shadername, "r");
-	if (!file)
-	{
-		error("Shader Loading Error", "Failed to open file %s.", shadername);
-		return 0;
-	}
-	fseek(file, 0, SEEK_END);
-	unsigned size = ftell(file);
-	if (!size)
-	{
-		error("Shader Loading Error", "File %s is empty.", shadername);
-		fclose(file);
-		return 0;
-	}
-	rewind(file);
-	*vertex_shader = (char*)malloc(size + 1);
-	fread(*vertex_shader, 1, size, file);
-	(*vertex_shader)[size] = '\0';
-	fclose(file);
-
-	sprintf(shadername, "%s.fs.glsl", filename);
-	file = fopen(shadername, "r");
-	if (!file)
-	{
-		error("Shader Loading Error", "Failed to open file %s.", shadername);
-		free(*vertex_shader);
-		*vertex_shader = NULL;
-		return 0;
-	}
-	fseek(file, 0, SEEK_END);
-	size = ftell(file);
-	if (!size)
-	{
-		error("Shader Loading Error", "File %s is empty.", shadername);
-		free(*vertex_shader);
-		*vertex_shader = NULL;
-		fclose(file);
-		return 0;
-	}
-	rewind(file);
-	*fragment_shader = (char*)malloc(size + 1);
-	fread(*fragment_shader, 1, size, file);
-	(*fragment_shader)[size] = '\0';
-	fclose(file);
-	return 1;
 }
 
 static void process_controls(unsigned type, unsigned key, unsigned short* controls)
