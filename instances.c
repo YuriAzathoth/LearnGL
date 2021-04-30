@@ -98,6 +98,9 @@ int main(int argc, char** argv)
 
 	// OpenGL
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CW);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// STB Image
