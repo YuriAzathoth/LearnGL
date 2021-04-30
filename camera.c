@@ -299,7 +299,6 @@ int main(int argc, char** argv)
 	versor rotation;
 	glm_quat_identity(rotation);
 
-	SDL_Event event;
 	int run = 1;
 	int i;
 	float tick_delta;
@@ -310,93 +309,12 @@ int main(int argc, char** argv)
 	{
 		tick_curr = (float)SDL_GetTicks();
 		tick_delta = tick_curr - tick_prev;
-
-		// Events
-		while (SDL_PollEvent(&event))
-		{
-			switch (event.type)
-			{
-			case SDL_QUIT:
-				run = 0;
-				break;
-			case SDL_KEYDOWN:
-				if (event.key.keysym.sym == SDLK_ESCAPE)
-					run = 0;
-				break;
-			case SDL_MOUSEMOTION:
-				if (event.motion.xrel)
-				{
-					glm_quat(camera_rotate, (float)event.motion.xrel * tick_delta * CAMERA_SENSITIVITY_MOUSE, 0.0f, 1.0f, 0.0f);
-					glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-				}
-				if (event.motion.yrel)
-				{
-					glm_quat(camera_rotate, (float)event.motion.yrel * tick_delta * CAMERA_SENSITIVITY_MOUSE, 1.0f, 0.0f, 0.0f);
-					glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-				}
-				break;
-			}
-			process_controls(event.type, event.key.keysym.sym, &controls);
-		}
-
-		glm_vec3_zero(camera_move);
-		if (controls & CONTROL_FORWARD)
-			camera_move[2] -= 1.0f;
-		if (controls & CONTROL_BACK)
-			camera_move[2] += 1.0f;
-		if (controls & CONTROL_LEFT)
-			camera_move[0] -= 1.0f;
-		if (controls & CONTROL_RIGHT)
-			camera_move[0] += 1.0f;
-		if (controls & CONTROL_UP)
-			camera_move[1] += 1.0f;
-		if (controls & CONTROL_DOWN)
-			camera_move[1] -= 1.0f;
-		if (controls & CONTROL_PITCH_UP)
-		{
-			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, -1.0f, 0.0f, 0.0f);
-			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-		}
-		if (controls & CONTROL_PITCH_DOWN)
-		{
-			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 1.0f, 0.0f, 0.0f);
-			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-		}
-		if (controls & CONTROL_YAW_LEFT)
-		{
-			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, -1.0f, 0.0f);
-			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-		}
-		if (controls & CONTROL_YAW_RIGHT)
-		{
-			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, 1.0f, 0.0f);
-			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-		}
-		if (controls & CONTROL_ROLL_LEFT)
-		{
-			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, 0.0f, -1.0f);
-			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-		}
-		if (controls & CONTROL_ROLL_RIGHT)
-		{
-			glm_quat(camera_rotate, tick_delta * CAMERA_SENSITIVITY, 0.0f, 0.0f, 1.0f);
-			glm_quat_mul_sse2(camera_rotation, camera_rotate, camera_rotation);
-		}
-
+		process_events(camera_position, camera_direction, camera_rotation, &controls, &run, tick_delta);
 		tick_prev = tick_curr;
 
 		// =================================
 		// Camera
 		// =================================
-		// Move
-		if (camera_move[0] || camera_move[1] || camera_move[2])
-		{
-			glm_normalize(camera_move);
-			glm_vec3_scale(camera_move, CAMERA_SPEED * tick_delta, camera_move);
-			glm_quat_rotatev(camera_rotation, camera_move, camera_move);
-			glm_vec3_add(camera_position, camera_move, camera_position);
-		}
-
 		// Look
 		glm_quat_rotatev(camera_rotation, GLM_FORWARD, camera_direction);
 

@@ -3,8 +3,26 @@
 #include <SDL_events.h>
 #include <SDL_keycode.h>
 #include <SDL_messagebox.h>
+#include "cglm/affine.h"
+#include "cglm/quat.h"
+#include "cglm/vec3.h"
 #include "common.h"
 
+#define CAMERA_SENSITIVITY -0.00125f
+#define CAMERA_SENSITIVITY_MOUSE -0.00025f
+#define CAMERA_SPEED 0.01f
+#define CONTROL_FORWARD 0x0001
+#define CONTROL_BACK 0x0002
+#define CONTROL_LEFT 0x0004
+#define CONTROL_RIGHT 0x0008
+#define CONTROL_UP 0x0010
+#define CONTROL_DOWN 0x0020
+#define CONTROL_PITCH_UP 0x0040
+#define CONTROL_PITCH_DOWN 0x0080
+#define CONTROL_YAW_LEFT 0x0100
+#define CONTROL_YAW_RIGHT 0x0200
+#define CONTROL_ROLL_LEFT 0x0400
+#define CONTROL_ROLL_RIGHT 0x0800
 #define FILENAME_BUFFER_SIZE 256
 
 void error(const char* title, const char* format, ...)
@@ -119,90 +137,171 @@ int load_shaders_text(char** vertex_shader, char** fragment_shader, const char* 
 	return 1;
 }
 
-void process_controls(unsigned type, unsigned key, unsigned short* controls)
+void process_events(vec3 position, vec3 direction, versor rotation, unsigned short* controls, int* run, float frame_time)
 {
-	switch (type)
+	versor rotate;
+	float angle;
+
+	SDL_Event event;
+	while (SDL_PollEvent(&event))
 	{
-	case SDL_KEYDOWN:
-		switch (key)
+		switch (event.type)
 		{
-		case SDLK_w:
-			*controls |= CONTROL_FORWARD;
+		case SDL_QUIT:
+			*run = 0;
 			break;
-		case SDLK_s:
-			*controls |= CONTROL_BACK;
+		case SDL_KEYDOWN:
+			switch (event.key.keysym.sym)
+			{
+			case SDLK_w:
+				*controls |= CONTROL_FORWARD;
+				break;
+			case SDLK_s:
+				*controls |= CONTROL_BACK;
+				break;
+			case SDLK_a:
+				*controls |= CONTROL_LEFT;
+				break;
+			case SDLK_d:
+				*controls |= CONTROL_RIGHT;
+				break;
+			case SDLK_SPACE:
+				*controls |= CONTROL_UP;
+				break;
+			case SDLK_LCTRL:
+				*controls |= CONTROL_DOWN;
+				break;
+			case SDLK_UP:
+				*controls |= CONTROL_PITCH_UP;
+				break;
+			case SDLK_DOWN:
+				*controls |= CONTROL_PITCH_DOWN;
+				break;
+			case SDLK_LEFT:
+				*controls |= CONTROL_YAW_LEFT;
+				break;
+			case SDLK_RIGHT:
+				*controls |= CONTROL_YAW_RIGHT;
+				break;
+			case SDLK_q:
+				*controls |= CONTROL_ROLL_LEFT;
+				break;
+			case SDLK_e:
+				*controls |= CONTROL_ROLL_RIGHT;
+				break;
+			case SDLK_ESCAPE:
+				*run = 0;
+				break;
+			}
 			break;
-		case SDLK_a:
-			*controls |= CONTROL_LEFT;
+		case SDL_KEYUP:
+			switch (event.key.keysym.sym)
+			{
+			case SDLK_w:
+				*controls &= ~CONTROL_FORWARD;
+				break;
+			case SDLK_s:
+				*controls &= ~CONTROL_BACK;
+				break;
+			case SDLK_a:
+				*controls &= ~CONTROL_LEFT;
+				break;
+			case SDLK_d:
+				*controls &= ~CONTROL_RIGHT;
+				break;
+			case SDLK_SPACE:
+				*controls &= ~CONTROL_UP;
+				break;
+			case SDLK_LCTRL:
+				*controls &= ~CONTROL_DOWN;
+				break;
+			case SDLK_UP:
+				*controls &= ~CONTROL_PITCH_UP;
+				break;
+			case SDLK_DOWN:
+				*controls &= ~CONTROL_PITCH_DOWN;
+				break;
+			case SDLK_LEFT:
+				*controls &= ~CONTROL_YAW_LEFT;
+				break;
+			case SDLK_RIGHT:
+				*controls &= ~CONTROL_YAW_RIGHT;
+				break;
+			case SDLK_q:
+				*controls &= ~CONTROL_ROLL_LEFT;
+				break;
+			case SDLK_e:
+				*controls &= ~CONTROL_ROLL_RIGHT;
+				break;
+			}
 			break;
-		case SDLK_d:
-			*controls |= CONTROL_RIGHT;
-			break;
-		case SDLK_SPACE:
-			*controls |= CONTROL_UP;
-			break;
-		case SDLK_LCTRL:
-			*controls |= CONTROL_DOWN;
-			break;
-		case SDLK_UP:
-			*controls |= CONTROL_PITCH_UP;
-			break;
-		case SDLK_DOWN:
-			*controls |= CONTROL_PITCH_DOWN;
-			break;
-		case SDLK_LEFT:
-			*controls |= CONTROL_YAW_LEFT;
-			break;
-		case SDLK_RIGHT:
-			*controls |= CONTROL_YAW_RIGHT;
-			break;
-		case SDLK_q:
-			*controls |= CONTROL_ROLL_LEFT;
-			break;
-		case SDLK_e:
-			*controls |= CONTROL_ROLL_RIGHT;
+		case SDL_MOUSEMOTION:
+			angle = frame_time * CAMERA_SENSITIVITY_MOUSE;
+			if (event.motion.xrel)
+			{
+				glm_quat(rotate, (float)event.motion.xrel * angle, 0.0f, 1.0f, 0.0f);
+				glm_quat_mul_sse2(rotation, rotate, rotation);
+			}
+			if (event.motion.yrel)
+			{
+				glm_quat(rotate, (float)event.motion.yrel * angle, 1.0f, 0.0f, 0.0f);
+				glm_quat_mul_sse2(rotation, rotate, rotation);
+			}
 			break;
 		}
-		break;
-	case SDL_KEYUP:
-		switch (key)
-		{
-		case SDLK_w:
-			*controls &= ~CONTROL_FORWARD;
-			break;
-		case SDLK_s:
-			*controls &= ~CONTROL_BACK;
-			break;
-		case SDLK_a:
-			*controls &= ~CONTROL_LEFT;
-			break;
-		case SDLK_d:
-			*controls &= ~CONTROL_RIGHT;
-			break;
-		case SDLK_SPACE:
-			*controls &= ~CONTROL_UP;
-			break;
-		case SDLK_LCTRL:
-			*controls &= ~CONTROL_DOWN;
-			break;
-		case SDLK_UP:
-			*controls &= ~CONTROL_PITCH_UP;
-			break;
-		case SDLK_DOWN:
-			*controls &= ~CONTROL_PITCH_DOWN;
-			break;
-		case SDLK_LEFT:
-			*controls &= ~CONTROL_YAW_LEFT;
-			break;
-		case SDLK_RIGHT:
-			*controls &= ~CONTROL_YAW_RIGHT;
-			break;
-		case SDLK_q:
-			*controls &= ~CONTROL_ROLL_LEFT;
-			break;
-		case SDLK_e:
-			*controls &= ~CONTROL_ROLL_RIGHT;
-			break;
-		}
+	}
+
+	angle = frame_time * CAMERA_SENSITIVITY;
+	if (*controls & CONTROL_PITCH_UP)
+	{
+		glm_quat(rotate, angle, -1.0f, 0.0f, 0.0f);
+		glm_quat_mul_sse2(rotation, rotate, rotation);
+	}
+	if (*controls & CONTROL_PITCH_DOWN)
+	{
+		glm_quat(rotate, angle, 1.0f, 0.0f, 0.0f);
+		glm_quat_mul_sse2(rotation, rotate, rotation);
+	}
+	if (*controls & CONTROL_YAW_LEFT)
+	{
+		glm_quat(rotate, angle, 0.0f, -1.0f, 0.0f);
+		glm_quat_mul_sse2(rotation, rotate, rotation);
+	}
+	if (*controls & CONTROL_YAW_RIGHT)
+	{
+		glm_quat(rotate, angle, 0.0f, 1.0f, 0.0f);
+		glm_quat_mul_sse2(rotation, rotate, rotation);
+	}
+	if (*controls & CONTROL_ROLL_LEFT)
+	{
+		glm_quat(rotate, angle, 0.0f, 0.0f, -1.0f);
+		glm_quat_mul_sse2(rotation, rotate, rotation);
+	}
+	if (*controls & CONTROL_ROLL_RIGHT)
+	{
+		glm_quat(rotate, angle, 0.0f, 0.0f, 1.0f);
+		glm_quat_mul_sse2(rotation, rotate, rotation);
+	}
+
+	vec3 move = GLM_VEC3_ZERO_INIT;
+	if (*controls & CONTROL_FORWARD)
+		move[2] -= 1.0f;
+	if (*controls & CONTROL_BACK)
+		move[2] += 1.0f;
+	if (*controls & CONTROL_LEFT)
+		move[0] -= 1.0f;
+	if (*controls & CONTROL_RIGHT)
+		move[0] += 1.0f;
+	if (*controls & CONTROL_UP)
+		move[1] += 1.0f;
+	if (*controls & CONTROL_DOWN)
+		move[1] -= 1.0f;
+
+	if (move[0] || move[1] || move[2])
+	{
+		glm_normalize(move);
+		glm_quat_rotatev(rotation, move, direction);
+		glm_vec3_scale(direction, CAMERA_SPEED, move);
+		glm_vec3_add(position, move, position);
 	}
 }
