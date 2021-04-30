@@ -191,10 +191,10 @@ int main(int argc, char** argv)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	int width, height, channels;
-	unsigned char* texture_data = stbi_load("data/textures/crate.png", &width, &height, &channels, 0);
+	unsigned char* texture_data = stbi_load("data/textures/crate_diffuse.png", &width, &height, &channels, 0);
 	if (!texture_data)
 	{
-		error("Texture Loading Error", "Could not found file data/textures/crate.png.");
+		error("Texture Loading Error", "Could not found file data/textures/crate_diffuse.png.");
 		SDL_GL_DeleteContext(context);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
