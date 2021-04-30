@@ -63,19 +63,6 @@ static const unsigned cube_indices[] =
 	20, 21, 22, 22, 23, 20	// Right
 };
 
-static vec3 cube_position = { 0.0f, 0.0f, 0.0f };
-static vec3 cube_axis = { 0.5, 0.5, 0.2 };
-static versor cube_rotation = GLM_QUAT_IDENTITY_INIT;
-
-static vec3 lamp_delta = { 2.0f, 1.0f, -0.5f };
-static vec3 lamp_scale = { 0.25f, 0.25f, 0.25f };
-static vec3 lamp_axis = { 0.0f, 0.8f, 0.2f };
-static vec3 lamp_position;
-static versor lamp_rotation = GLM_QUAT_IDENTITY_INIT;
-
-static vec3 ambient_color = { 0.1f, 0.1f, 0.1f };
-static vec3 light_color = { 1.0f, 0.8f, 0.6f };
-
 int main(int argc, char** argv)
 {
 	// =====================================
@@ -378,8 +365,22 @@ int main(int argc, char** argv)
 	}
 
 	// =====================================
-	// Rendering
+	// Scene
 	// =====================================
+	// Cube
+	vec3 cube_position = { 0.0f, 0.0f, 0.0f };
+	vec3 cube_axis = { 0.5, 0.5, 0.2 };
+	versor cube_rotation = GLM_QUAT_IDENTITY_INIT;
+
+	// Light
+	vec3 ambient_color = { 0.1f, 0.1f, 0.1f };
+	vec3 light_distance = { 2.0f, 1.0f, -0.5f };
+	vec3 light_color = { 1.0f, 0.8f, 0.6f };
+	vec3 light_scale = { 0.25f, 0.25f, 0.25f };
+	vec3 light_axis = { 0.0f, 0.8f, 0.2f };
+	vec3 light_position;
+	versor light_rotation = GLM_QUAT_IDENTITY_INIT;
+
 	// Camera
 	vec3 camera_position = { 0.0f, 0.0f, 3.0f };
 	vec3 camera_direction;
@@ -388,6 +389,9 @@ int main(int argc, char** argv)
 	versor camera_rotation = GLM_QUAT_IDENTITY_INIT;
 	versor camera_rotate;
 
+	// =====================================
+	// Rendering
+	// =====================================
 	// Matrices
 	mat4 model, model_inv, view, viewproj;
 
@@ -513,9 +517,9 @@ int main(int argc, char** argv)
 		// Rendering
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm_quatv(rotation, tick_delta * 0.001f, lamp_axis);
-		glm_quat_mul_sse2(rotation, lamp_rotation, lamp_rotation);
-		glm_quat_rotatev(lamp_rotation, lamp_delta, lamp_position);
+		glm_quatv(rotation, tick_delta * 0.001f, light_axis);
+		glm_quat_mul_sse2(rotation, light_rotation, light_rotation);
+		glm_quat_rotatev(light_rotation, light_distance, light_position);
 
 		glm_mat4_identity(model);
 		glm_translate(model, cube_position);
@@ -531,7 +535,7 @@ int main(int argc, char** argv)
 		glUniformMatrix4fv(uniform_model, 1, GL_FALSE, model[0]);
 		glUniformMatrix4fv(uniform_model_inv, 1, GL_FALSE, model_inv[0]);
 		glUniform3fv(uniform_ambient_color, 1, ambient_color);
-		glUniform3fv(uniform_light_position, 1, lamp_position);
+		glUniform3fv(uniform_light_position, 1, light_position);
 		glUniform3fv(uniform_light_color, 1, light_color);
 		glUniform3fv(uniform_view_pos, 1, camera_position);
 		glActiveTexture(GL_TEXTURE0);
@@ -545,8 +549,8 @@ int main(int argc, char** argv)
 
 		glm_mat4_identity(model);
 		glm_quat_rotate(model, rotation, model);
-		glm_translate(model, lamp_position);
-		glm_scale(model, lamp_scale);
+		glm_translate(model, light_position);
+		glm_scale(model, light_scale);
 
 		glUseProgram(program_emissive);
 		glUniformMatrix4fv(uniform_viewproj_dif, 1, GL_FALSE, viewproj[0]);

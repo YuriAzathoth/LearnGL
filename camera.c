@@ -274,7 +274,7 @@ int main(int argc, char** argv)
 	}
 
 	// =====================================
-	// Rendering
+	// Scene
 	// =====================================
 	// Camera
 	vec3 camera_position = { 0.0f, 0.0f, 3.0f };
@@ -284,6 +284,9 @@ int main(int argc, char** argv)
 	versor camera_rotation = GLM_QUAT_IDENTITY_INIT;
 	versor camera_rotate;
 
+	// =====================================
+	// Rendering
+	// =====================================
 	// Matrices
 	mat4 model, view, viewproj;
 
