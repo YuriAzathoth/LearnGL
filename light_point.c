@@ -424,13 +424,10 @@ int main(int argc, char** argv)
 
 	// Light
 	vec3 ambient_color = { 0.1f, 0.1f, 0.1f };
+	vec3 light_position = { -0.5f, -0.5f, -2.5f };
 	vec3 light_diffuse = { 1.0f, 0.8f, 0.6f };
 	vec3 light_specular = { 0.5f, 0.5f, 0.5f };
-	vec3 light_distance = { 5.0f, 0.0f, 0.0f };
 	vec3 light_scale = { 0.25f, 0.25f, 0.25f };
-	vec3 light_axis = { 0.0f, 0.8f, 0.2f };
-	vec3 light_position;
-	versor light_rotation = GLM_QUAT_IDENTITY_INIT;
 	const float light_constant = 1.0f;
 	const float light_linear = 0.09f;
 	const float light_quadratic = 0.032f;
@@ -487,10 +484,6 @@ int main(int argc, char** argv)
 
 		// Rendering
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glm_quatv(rotation, tick_delta * 0.001f, light_axis);
-		glm_quat_mul_sse2(rotation, light_rotation, light_rotation);
-		glm_quat_rotatev(light_rotation, light_distance, light_position);
 
 		glUseProgram(program_diffuse);
 		glUniformMatrix4fv(uniform_viewproj, 1, GL_FALSE, viewproj[0]);
