@@ -467,16 +467,15 @@ int main(int argc, char** argv)
 		// Rendering
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//		glm_quatv(rotation, tick_delta * 0.001f, light_axis);
-//		glm_quat_mul_sse2(rotation, light_rotation, light_rotation);
-//		glm_quat_rotatev(light_rotation, light_distance, light_position);
-		glm_vec4_copy3(light_distance, light_position);
+		glm_quatv(rotation, tick_delta * 0.001f, light_axis);
+		glm_quat_mul_sse2(rotation, light_rotation, light_rotation);
+		glm_quat_rotatev(light_rotation, light_distance, light_position);
 
 		glm_mat4_identity(model);
 		glm_translate(model, cube_position);
-//		glm_quatv(rotation, tick_delta * -0.00025f, cube_axis);
-//		glm_quat_mul_sse2(rotation, cube_rotation, cube_rotation);
-//		glm_quat_rotate(model, cube_rotation, model);
+		glm_quatv(rotation, tick_delta * -0.00025f, cube_axis);
+		glm_quat_mul_sse2(rotation, cube_rotation, cube_rotation);
+		glm_quat_rotate(model, cube_rotation, model);
 
 		glm_mat4_inv_sse2(model, model_inv);
 		glm_mat4_transp_sse2(model_inv, model_inv);
