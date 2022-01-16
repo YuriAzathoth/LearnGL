@@ -21,6 +21,7 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define SDL_MAIN_HANDLED
@@ -31,9 +32,9 @@
 
 static const float vertices[] =
 {
-	-0.5f, -0.5f,  0.0f,
+	 0.5f,  0.5f,  0.0f,
 	 0.5f, -0.5f,  0.0f,
-	 0.5f,  0.5f,  0.0f
+	-0.5f, -0.5f,  0.0f
 };
 
 static const char* vertex_shader =
@@ -123,17 +124,19 @@ int main(int argc, char** argv)
 	}
 
 	// Shader
-	int success;
+	int result;
 
 	const unsigned vertex = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertex, 1, (const char* const*)&vertex_shader, NULL);
 	glCompileShader(vertex);
-	glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
-	if (!success)
+	glGetShaderiv(vertex, GL_COMPILE_STATUS, &result);
+	if (!result)
 	{
-		char message[ERROR_BUFFER_SIZE];
+		glGetShaderiv(vertex, GL_INFO_LOG_LENGTH, &result);
+		char* message = (char*)malloc(result);
 		glGetShaderInfoLog(vertex, ERROR_BUFFER_SIZE, NULL, message);
 		error("Vertex Shader Error", message);
+		free(message);
 		SDL_GL_DeleteContext(context);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
@@ -143,12 +146,14 @@ int main(int argc, char** argv)
 	const unsigned fragment = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment, 1, (const char* const*)&fragment_shader, NULL);
 	glCompileShader(fragment);
-	glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
-	if (!success)
+	glGetShaderiv(fragment, GL_COMPILE_STATUS, &result);
+	if (!result)
 	{
-		char message[ERROR_BUFFER_SIZE];
+		glGetShaderiv(fragment, GL_INFO_LOG_LENGTH, &result);
+		char* message = (char*)malloc(result);
 		glGetShaderInfoLog(fragment, ERROR_BUFFER_SIZE, NULL, message);
 		error("Fragment Shader Error", message);
+		free(message);
 		SDL_GL_DeleteContext(context);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
@@ -159,12 +164,14 @@ int main(int argc, char** argv)
 	glAttachShader(program, vertex);
 	glAttachShader(program, fragment);
 	glLinkProgram(program);
-	glGetProgramiv(program, GL_LINK_STATUS, &success);
-	if (!success)
+	glGetProgramiv(program, GL_LINK_STATUS, &result);
+	if (!result)
 	{
-		char message[ERROR_BUFFER_SIZE];
+		glGetProgramiv(vertex, GL_INFO_LOG_LENGTH, &result);
+		char* message = (char*)malloc(result);
 		glGetProgramInfoLog(program, ERROR_BUFFER_SIZE, NULL, message);
 		error("Fragment Shader Error", message);
+		free(message);
 		SDL_GL_DeleteContext(context);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
